@@ -548,12 +548,11 @@ func addWithAncestors(set map[string]bool, path string) {
 	}
 }
 
-// pathsWithSessions keeps the paths that hold a session in their subtree,
-// walking up from each group with sessions rather than comparing every
-// path with every group.
 func pathsWithSessions(paths map[string]bool, sessions map[string][]Session) map[string]bool {
 	kept := map[string]bool{}
 	for group := range sessions {
+		// A walk stops at a kept path: the walk that kept it already went
+		// through every ancestor above it.
 		for path := group; path != "" && !kept[path]; path = ParentGroup(path) {
 			if paths[path] {
 				kept[path] = true
