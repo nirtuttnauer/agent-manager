@@ -68,16 +68,24 @@ func (m Model) FileReviewed(path string) bool {
 
 func (m *Model) clearStaleMarks() bool {
 	marks := m.reviewed[m.reviewKey()]
+	if len(marks) == 0 {
+		return false
+	}
+	files := make(map[string]*diff.FileDiff, len(m.set.Files))
+	for i := range m.set.Files {
+		files[m.set.Files[i].File.Path] = &m.set.Files[i]
+	}
+	scopeKey := m.scopeKey()
 	changed := false
 	for markKey, stored := range marks {
 		if stored == 0 {
 			continue
 		}
 		scope, path, _ := strings.Cut(markKey, "\x00")
-		if scope != m.scopeKey() {
+		if scope != scopeKey {
 			continue
 		}
-		fd := m.fileByPath(path)
+		fd := files[path]
 		if fd != nil && fd.Loaded() && ContentHash(fd) != stored {
 			delete(marks, markKey)
 			changed = true
