@@ -127,21 +127,23 @@ func (m *Model) markMissingCommentsOutdated() bool {
 }
 
 func (m *Model) reanchorAnnotations(path string) bool {
-	notes := m.annotations[m.reviewKey()]
-	files := make(map[string]*diff.FileDiff, len(m.set.Files))
-	for i := range m.set.Files {
-		files[m.set.Files[i].File.Path] = &m.set.Files[i]
+	fd := m.fileByPath(path)
+	if fd == nil {
+		return false
 	}
-	hashes := map[string]uint64{}
-	anchors := map[string]map[anchor]anchorMatch{}
-	occupied := make(map[slot]int, len(notes))
+	notes := m.annotations[m.reviewKey()]
+	currentHash := ContentHash(fd)
+	var index map[anchor]anchorMatch
+	occupied := map[slot]int{}
 	for i := range notes {
-		occupied[noteSlot(&notes[i])]++
+		if notes[i].file == path {
+			occupied[noteSlot(&notes[i])]++
+		}
 	}
 	changed := false
 	for i := range notes {
 		note := &notes[i]
-		if path != "" && note.file != path {
+		if note.file != path {
 			continue
 		}
 		scope := note.scope
@@ -150,15 +152,6 @@ func (m *Model) reanchorAnnotations(path string) bool {
 		}
 		if !m.inScope(scope) {
 			continue
-		}
-		fd := files[note.file]
-		if fd == nil {
-			continue
-		}
-		currentHash, ok := hashes[note.file]
-		if !ok {
-			currentHash = ContentHash(fd)
-			hashes[note.file] = currentHash
 		}
 		if note.hash != 0 && note.hash == currentHash {
 			if note.outdated {
@@ -174,13 +167,11 @@ func (m *Model) reanchorAnnotations(path string) bool {
 			}
 			continue
 		}
-		index, ok := anchors[note.file]
-		if !ok {
+		if index == nil {
 			index = anchorIndex(fd)
-			anchors[note.file] = index
 		}
 		match := index[anchor{excerpt: note.excerpt, deleted: note.deleted}]
-		target := slot{file: note.file, line: match.line, deleted: note.deleted}
+		target := slot{line: match.line, deleted: note.deleted}
 		own := noteSlot(note)
 		taken := occupied[target]
 		if own == target {
@@ -203,15 +194,15 @@ func (m *Model) reanchorAnnotations(path string) bool {
 	return changed
 }
 
-// slot is the place a comment sits: two comments never share one.
+// slot is the line a comment sits on within the file: two comments never
+// share one.
 type slot struct {
-	file    string
 	line    int
 	deleted bool
 }
 
 func noteSlot(note *annotation) slot {
-	return slot{file: note.file, line: note.line, deleted: note.deleted}
+	return slot{line: note.line, deleted: note.deleted}
 }
 
 type anchor struct {
