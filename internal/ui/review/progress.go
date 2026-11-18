@@ -128,9 +128,6 @@ func (m *Model) markMissingCommentsOutdated() bool {
 
 func (m *Model) reanchorAnnotations(path string) bool {
 	fd := m.fileByPath(path)
-	if fd == nil {
-		return false
-	}
 	notes := m.annotations[m.reviewKey()]
 	currentHash := ContentHash(fd)
 	var index map[anchor]anchorMatch
