@@ -47,7 +47,9 @@ type FileDiff struct {
 	IsLoaded  bool `json:"-"`
 	rows      []Row
 	// hash is ContentHash taken once by BuildFile, which every frame of
-	// the review pane reads; hashed is false for a value built elsewhere.
+	// the review pane reads, and Clone copies it with the lines. Code that
+	// edits Lines after BuildFile builds the file again rather than keep a
+	// stale hash. hashed is false for a value built elsewhere.
 	hash   uint64
 	hashed bool
 }
